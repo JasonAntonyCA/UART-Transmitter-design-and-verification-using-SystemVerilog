@@ -1,0 +1,107 @@
+`timescale 1ns / 1ps
+
+module UART_main
+(input logic clk , rst_n , st ,
+ input logic [7:0] din,
+ output logic tx , tx_done);
+ 
+ enum logic [1:0]{
+    idle,
+    start,
+    data,
+    stop
+} state;
+    
+logic clk_cpb;
+logic [7:0] sr ;
+logic [3:0] bit_index;
+logic [12:0] count;
+
+always_ff @(posedge clk ) begin  
+    
+    if(!rst_n) begin
+    
+        state <= idle;
+        tx <= 1'b1;
+        sr <= 8'h00;
+        bit_index <= 4'h0;
+        tx_done <= 1'b0;
+        
+    end
+
+    else begin
+    
+    case ( state )
+    
+        idle : begin
+        
+            tx <= 1'b1;
+            bit_index <= 4'h0;
+            tx_done <= 1'b0;
+            
+            if(st) begin
+                
+                sr <= din;
+                state <= start;
+                
+            end
+            else begin
+            
+                sr <= 8'h00;
+                state <= idle;
+                
+            end
+            
+        end
+        
+        start : begin
+        
+            tx <= 1'b0;
+            state <= data; 
+            
+        end
+        
+        data : begin
+        
+            if(bit_index == 4'h7) begin
+            
+                sr <= 8'h00;
+                bit_index <= 4'h0;
+                state <= stop;
+                tx <= sr[bit_index];
+                
+            end
+            
+            else begin
+            
+                tx <= sr[bit_index];
+                bit_index <= bit_index + 1'b1;
+                
+            end
+        
+        end
+        
+        stop : begin
+        
+            state <= idle;
+            sr <= 8'h00;
+            tx <= 1'b1;
+            tx_done <= 1'b1;
+            
+        end
+        
+        default : begin
+        
+            state <= idle;
+            tx <= 1'b1;
+            sr <= 8'h00;
+            bit_index <= 4'h0;
+            
+        end
+    
+    endcase
+    
+    end
+
+end
+endmodule
